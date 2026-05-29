@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<meta name="theme-color" content="#1D9E75">
+<title>Gastos</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231D9E75'/><text y='.9em' font-size='70' x='15'>💸</text></svg>">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --green:#1D9E75;--green-dark:#0F6E56;--green-light:#E1F5EE;
+    --blue:#378ADD;--blue-light:#E6F1FB;
+    --red:#E24B4A;--amber:#BA7517;
+    --bg:#f7f7f5;--surface:#ffffff;--border:#e8e8e4;
+    --text:#1a1a18;--text2:#6b6b67;--text3:#9b9b97;
+    --radius:14px;--radius-sm:10px;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#111110;--surface:#1c1c1a;--border:#2e2e2c;
+      --text:#f0efea;--text2:#9b9b97;--text3:#6b6b67;
+      --green-light:#0a2e22;--blue-light:#0a1e35;
+    }
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;font-size:16px;overflow:hidden}
+  .app{height:100%;display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:relative}
+
+  /* screens */
+  .screen{position:absolute;inset:0;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;flex-direction:column}
+  .screen.active{display:flex}
+  .screen-body{flex:1;padding:0 16px 100px}
+
+  /* header */
+  .header{padding:56px 16px 12px;display:flex;justify-content:space-between;align-items:flex-end;background:var(--bg);position:sticky;top:0;z-index:10}
+  .header-title{font-size:28px;font-weight:600;letter-spacing:-0.5px}
+  .header-sub{font-size:13px;color:var(--text2);margin-bottom:2px}
+
+  /* cards */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px}
+  .card-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:12px}
+
+  /* progress bars */
+  .progress-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .progress-label{font-size:15px;font-weight:500}
+  .progress-pct{font-size:12px;color:var(--text2)}
+  .progress-track{background:var(--bg);border-radius:8px;height:10px;overflow:hidden;margin-bottom:6px}
+  .progress-fill{height:100%;border-radius:8px;transition:width 0.5s ease}
+  .progress-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text2)}
+  .progress-row strong{color:var(--text);font-weight:500}
+  .favor-tag{font-size:11px;color:var(--green);margin-top:4px}
+
+  /* big add button */
+  .fab{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;border:none;border-radius:30px;padding:16px 32px;font-size:17px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(29,158,117,0.35);letter-spacing:-0.2px;white-space:nowrap;z-index:20}
+  .fab:active{transform:translateX(-50%) scale(0.97)}
+
+  /* nav tabs */
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:0 16px 12px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex-shrink:0;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer}
+  .tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+  /* h-bars */
+  .hbar-item{margin-bottom:14px}
+  .hbar-meta{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:4px}
+  .hbar-meta strong{color:var(--text);font-weight:500}
+  .hbar-track{background:var(--bg);border-radius:6px;height:24px;overflow:hidden}
+  .hbar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;color:#fff;min-width:8px;transition:width 0.5s ease}
+
+  /* add screen */
+  .add-header{padding:56px 16px 0;display:flex;align-items:center;gap:12px}
+  .back-btn{background:var(--surface);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--text)}
+  .back-btn:active{background:var(--bg)}
+  .step{display:none;flex-direction:column;flex:1;padding:16px}
+  .step.active{display:flex}
+
+  /* amount */
+  .amount-big{font-size:56px;font-weight:300;text-align:center;padding:24px 0 8px;letter-spacing:-2px;color:var(--text)}
+  .amount-big.has-value{font-weight:500}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 20px}
+  .key{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0;height:64px;font-size:22px;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)}
+  .key:active{background:var(--bg);transform:scale(0.96)}
+
+  /* categories */
+  .cat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0 20px}
+  .cat-item{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px 10px;text-align:center;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.15s}
+  .cat-item.sel{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+  .cat-item:active{transform:scale(0.97)}
+
+  /* method */
+  .method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 20px}
+  .method-item{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:16px 8px;text-align:center;cursor:pointer;font-size:13px;font-weight:500;transition:all 0.15s}
+  .method-item .icon{font-size:24px;margin-bottom:6px}
+  .method-item.sel{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+  .method-item:active{transform:scale(0.97)}
+
+  /* step info bar */
+  .step-info{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:var(--text2);margin-bottom:16px}
+  .step-info strong{color:var(--text)}
+
+  /* continue btn */
+  .btn-main{background:var(--green);color:#fff;border:none;border-radius:var(--radius);padding:17px;font-size:17px;font-weight:600;width:100%;cursor:pointer;margin-top:auto}
+  .btn-main:active{background:var(--green-dark);transform:scale(0.98)}
+  .btn-main:disabled{opacity:0.4}
+
+  /* config screen */
+  .config-section{margin-bottom:24px}
+  .config-label{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px}
+  .input-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .input-label{font-size:14px;color:var(--text2);min-width:90px}
+  input[type=number],input[type=text]{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px;color:var(--text);outline:none;-webkit-appearance:none}
+  input:focus{border-color:var(--green)}
+  select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;color:var(--text);outline:none;-webkit-appearance:none;cursor:pointer}
+  .btn-save{background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);padding:12px 20px;font-size:15px;font-weight:600;cursor:pointer;width:100%}
+  .btn-save:active{background:var(--green-dark)}
+  .btn-del{background:none;border:1px solid var(--red);color:var(--red);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+  .btn-del:active{background:#fcebeb}
+  .cat-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .cat-row:last-child{border-bottom:none}
+  .cat-name{flex:1;font-size:14px}
+  .hist-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .hist-row:last-child{border-bottom:none}
+  .hist-main{font-size:14px;font-weight:500}
+  .hist-sub{font-size:12px;color:var(--text2);margin-top:2px}
+  .hist-amount{font-size:15px;font-weight:600}
+  .method-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px}
+  .badge-deb{background:var(--green-light);color:var(--green-dark)}
+  .badge-cred{background:var(--blue-light);color:#0C447C}
+  .badge-efec{background:#faeeda;color:#633806}
+
+  /* toast */
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 20px;border-radius:20px;font-size:14px;font-weight:500;z-index:999;opacity:0;transition:opacity 0.25s;pointer-events:none;white-space:nowrap}
+
+  /* empty state */
+  .empty{text-align:center;padding:40px 20px;color:var(--text2);font-size:14px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- MAIN SCREEN -->
+  <div id="screen-main" class="screen active">
+    <div class="header">
+      <div>
+        <div class="header-sub" id="main-subtitle"></div>
+        <div class="header-title">mis gastos</div>
+      </div>
+      <button class="tab" onclick="goTo('screen-config')" style="margin-bottom:4px">⚙ ajustes</button>
+    </div>
+
+    <div class="screen-body">
+      <!-- Semanal -->
+      <div class="card">
+        <div class="card-title">semanal</div>
+        <div class="progress-header">
+          <span class="progress-label" id="sem-label">esta semana</span>
+          <span class="progress-pct" id="sem-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="sem-bar" style="background:var(--green);width:0%"></div>
+        </div>
+        <div class="progress-row">
+          <span>gastado: <strong id="sem-spent">$0</strong></span>
+          <span>restante: <strong id="sem-left" style="color:var(--green)">$0</strong></span>
+        </div>
+        <div class="favor-tag" id="sem-favor"></div>
+      </div>
+
+      <!-- Mesada -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">mesada</div>
+        <div class="progress-header">
+          <span class="progress-label" id="mes-label">este mes</span>
+          <span class="progress-pct" id="mes-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="mes-bar" style="background:var(--blue);width:0%"></div>
+        </div>
+        <div class="progress-row">
+          <span>gastado: <strong id="mes-spent">$0</strong></span>
+          <span>restante: <strong id="mes-left" style="color:var(--blue)">$0</strong></span>
+        </div>
+        <div class="favor-tag" id="mes-favor"></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="setView('semana',this)">por semana</button>
+        <button class="tab" onclick="setView('mes',this)">por método</button>
+        <button class="tab" onclick="setView('categoria',this)">por categoría</button>
+      </div>
+
+      <div id="view-container"></div>
+    </div>
+
+    <button class="fab" onclick="goTo('screen-add')">+ ingresar gasto</button>
+  </div>
+
+  <!-- ADD SCREEN -->
+  <div id="screen-add" class="screen">
+    <div class="add-header">
+      <button class="back-btn" onclick="goTo('screen-main')">←</button>
+      <span style="font-size:17px;font-weight:600">nuevo gasto</span>
+    </div>
+
+    <!-- Step 1: monto -->
+    <div id="step-amount" class="step active">
+      <div class="amount-big" id="amount-display">$0</div>
+      <div class="keypad" id="keypad"></div>
+      <button class="btn-main" onclick="nextStep('step-cat')">continuar</button>
+    </div>
+
+    <!-- Step 2: categoría -->
+    <div id="step-cat" class="step">
+      <div class="step-info">monto: <strong id="cat-amount-show"></strong></div>
+      <div style="font-size:15px;font-weight:500;margin-bottom:4px">¿qué tipo de gasto?</div>
+      <div class="cat-grid" id="cat-grid"></div>
+      <button class="btn-main" onclick="nextStep('step-method')">continuar</button>
+    </div>
+
+    <!-- Step 3: método -->
+    <div id="step-method" class="step">
+      <div class="step-info">
+        <strong id="method-amount-show"></strong> · <strong id="method-cat-show"></strong><br>
+        <span id="bolsillo-info" style="color:var(--green)"></span>
+      </div>
+      <div style="font-size:15px;font-weight:500;margin-bottom:4px">¿cómo pagaste?</div>
+      <div class="method-grid">
+        <div class="method-item" onclick="selectMethod('débito',this)"><div class="icon">💳</div>débito</div>
+        <div class="method-item" onclick="selectMethod('crédito',this)"><div class="icon">🏦</div>crédito</div>
+        <div class="method-item" onclick="selectMethod('efectivo',this)"><div class="icon">💵</div>efectivo</div>
+      </div>
+      <button class="btn-main" id="btn-save" onclick="saveExpense()" disabled>guardar gasto</button>
+    </div>
+  </div>
+
+  <!-- CONFIG SCREEN -->
+  <div id="screen-config" class="screen">
+    <div class="header">
+      <div>
+        <button class="back-btn" onclick="goTo('screen-main')" style="margin-bottom:8px">← volver</button>
+        <div class="header-title">ajustes</div>
+      </div>
+    </div>
+    <div class="screen-body">
+
+      <div class="config-section">
+        <div class="config-label">mis ingresos</div>
+        <div class="input-row">
+          <span class="input-label">semanal ($)</span>
+          <input type="number" id="cfg-semanal" placeholder="ej: 50000" inputmode="numeric">
+        </div>
+        <div class="input-row">
+          <span class="input-label">mesada ($)</span>
+          <input type="number" id="cfg-mesada" placeholder="ej: 150000" inputmode="numeric">
+        </div>
+        <button class="btn-save" onclick="saveConfig()">guardar ingresos</button>
+      </div>
+
+      <div class="config-section">
+        <div class="config-label">categorías y bolsillo</div>
+        <div id="cat-config-list"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+          <input type="text" id="new-cat-name" placeholder="nueva categoría" style="margin:0;flex:1">
+          <select id="new-cat-bolsillo" style="margin:0">
+            <option value="semanal">semanal</option>
+            <option value="mesada">mesada</option>
+          </select>
+          <button class="btn-save" onclick="addCategory()" style="width:auto;padding:12px 14px">+</button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-label">historial</div>
+        <div id="history-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'gastos_pwa_v1';
+
+function defaultState() {
+  return {
+    semanal: 0, mesada: 0,
+    categories: [
+      {name:'comida',bolsillo:'semanal'},
+      {name:'supermercado',bolsillo:'semanal'},
+      {name:'salud',bolsillo:'semanal'},
+      {name:'transporte',bolsillo:'semanal'},
+      {name:'salidas',bolsillo:'mesada'},
+      {name:'novia',bolsillo:'mesada'},
+      {name:'entretenimiento',bolsillo:'mesada'},
+      {name:'caprichos',bolsillo:'mesada'},
+      {name:'compulsivas',bolsillo:'mesada'}
+    ],
+    expenses: [],
+    weekStart: getThisMonday(),
+    monthStart: getMonthStart(),
+    semFavor: 0,
+    mesFavor: 0
+  };
+}
+
+let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultState();
+
+function getThisMonday() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - (day === 0 ? 6 : day - 1);
+  return new Date(d.getFullYear(), d.getMonth(), diff).toISOString().split('T')[0];
+}
+function getMonthStart() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function fmt(n) { return '$' + Math.round(n).toLocaleString('es-CL'); }
+function pct(a, b) { return b === 0 ? 0 : Math.min(100, Math.round(a / b * 100)); }
+
+function checkResets() {
+  const todayMon = getThisMonday();
+  const todayMonStart = getMonthStart();
+  if (state.weekStart !== todayMon) {
+    const spent = getSpent('semanal');
+    state.semFavor += Math.max(0, state.semanal - spent);
+    state.weekStart = todayMon;
+    save();
+  }
+  if (state.monthStart !== todayMonStart) {
+    const spent = getSpent('mesada');
+    state.mesFavor += Math.max(0, state.mesada - spent);
+    state.monthStart = todayMonStart;
+    save();
+  }
+}
+
+function getSpent(bolsillo) {
+  const start = bolsillo === 'semanal' ? state.weekStart : state.monthStart;
+  return state.expenses.filter(e => e.date >= start && e.bolsillo === bolsillo).reduce((s, e) => s + e.amount, 0);
+}
+
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'screen-main') renderMain();
+  if (id === 'screen-config') renderConfig();
+  if (id === 'screen-add') resetAdd();
+}
+
+// ---- MAIN ----
+let currentView = 'semana';
+
+function renderMain() {
+  checkResets();
+  const now = new Date();
+  const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('main-subtitle').textContent = months[now.getMonth()] + ' ' + now.getFullYear();
+
+  const semSpent = getSpent('semanal');
+  const mesSpent = getSpent('mesada');
+  const semLeft = Math.max(0, state.semanal - semSpent);
+  const mesLeft = Math.max(0, state.mesada - mesSpent);
+  const semPct = pct(semSpent, state.semanal);
+  const mesPct = pct(mesSpent, state.mesada);
+
+  const monStart = new Date(state.weekStart + 'T12:00:00');
+  const monEnd = new Date(monStart); monEnd.setDate(monEnd.getDate() + 6);
+  const fd = d => d.getDate() + '/' + (d.getMonth() + 1);
+  document.getElementById('sem-label').textContent = fd(monStart) + ' – ' + fd(monEnd);
+
+  document.getElementById('sem-pct').textContent = semPct + '%';
+  document.getElementById('sem-spent').textContent = fmt(semSpent);
+  document.getElementById('sem-left').textContent = fmt(semLeft);
+  const semBar = document.getElementById('sem-bar');
+  semBar.style.width = semPct + '%';
+  semBar.style.background = semPct > 90 ? 'var(--red)' : 'var(--green)';
+  document.getElementById('sem-favor').textContent = state.semFavor > 0 ? '↑ saldo a favor de semanas anteriores: ' + fmt(state.semFavor) : '';
+
+  document.getElementById('mes-label').textContent = months[now.getMonth()];
+  document.getElementById('mes-pct').textContent = mesPct + '%';
+  document.getElementById('mes-spent').textContent = fmt(mesSpent);
+  document.getElementById('mes-left').textContent = fmt(mesLeft);
+  const mesBar = document.getElementById('mes-bar');
+  mesBar.style.width = mesPct + '%';
+  mesBar.style.background = mesPct > 90 ? 'var(--red)' : 'var(--blue)';
+  document.getElementById('mes-favor').textContent = state.mesFavor > 0 ? '↑ saldo a favor de meses anteriores: ' + fmt(state.mesFavor) : '';
+
+  renderView();
+}
+
+function setView(v, el) {
+  currentView = v;
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderView();
+}
+
+function renderView() {
+  const c = document.getElementById('view-container');
+  if (currentView === 'semana') renderSemView(c);
+  else if (currentView === 'mes') renderMesView(c);
+  else renderCatView(c);
+}
+
+function renderSemView(c) {
+  const weeks = {};
+  state.expenses.forEach(e => {
+    const d = new Date(e.date + 'T12:00:00');
+    const day = d.getDay();
+    const diff = d.getDate() - (day === 0 ? 6 : day - 1);
+    const mon = new Date(d.getFullYear(), d.getMonth(), diff).toISOString().split('T')[0];
+    weeks[mon] = (weeks[mon] || 0) + e.amount;
+  });
+  const sorted = Object.keys(weeks).sort().slice(-8);
+  if (!sorted.length) { c.innerHTML = '<div class="empty">sin gastos registrados aún</div>'; return; }
+  const max = Math.max(...sorted.map(k => weeks[k]));
+  const colors = ['#1D9E75','#378ADD','#BA7517','#D4537E','#7F77DD','#D85A30'];
+  c.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:12px">gastos por semana</div>' +
+    sorted.map((k, i) => {
+      const d = new Date(k + 'T12:00:00');
+      const label = 'semana ' + d.getDate() + '/' + (d.getMonth() + 1);
+      const p = Math.round(weeks[k] / max * 100);
+      return `<div class="hbar-item">
+        <div class="hbar-meta"><span>${label}</span><strong>${fmt(weeks[k])}</strong></div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${p}%;background:${colors[i % colors.length]}">&nbsp;</div></div>
+      </div>`;
+    }).join('');
+}
+
+function renderMesView(c) {
+  const byMethod = { 'débito': 0, 'crédito': 0, 'efectivo': 0 };
+  state.expenses.filter(e => e.date >= state.monthStart).forEach(e => {
+    byMethod[e.method] = (byMethod[e.method] || 0) + e.amount;
+  });
+  const total = Object.values(byMethod).reduce((a, b) => a + b, 0);
+  if (!total) { c.innerHTML = '<div class="empty">sin gastos este mes</div>'; return; }
+  const colors = { 'débito': 'var(--green)', 'crédito': 'var(--blue)', 'efectivo': '#BA7517' };
+  c.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:12px">este mes por método de pago</div>' +
+    Object.entries(byMethod).filter(([, v]) => v > 0).map(([k, v]) => {
+      const p = Math.round(v / total * 100);
+      return `<div class="hbar-item">
+        <div class="hbar-meta"><span>${k}</span><strong>${fmt(v)} <span style="color:var(--text2);font-weight:400">(${p}%)</span></strong></div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${p}%;background:${colors[k]}">&nbsp;</div></div>
+      </div>`;
+    }).join('');
+}
+
+function renderCatView(c) {
+  const map = {};
+  state.expenses.filter(e => e.date >= state.monthStart).forEach(e => {
+    map[e.cat] = (map[e.cat] || 0) + e.amount;
+  });
+  const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) { c.innerHTML = '<div class="empty">sin gastos este mes</div>'; return; }
+  const max = entries[0][1];
+  const colors = ['#1D9E75','#378ADD','#BA7517','#D4537E','#7F77DD','#D85A30','#639922','#888780','#E24B4A'];
+  c.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:12px">este mes por categoría</div>' +
+    entries.map(([k, v], i) => {
+      const p = Math.round(v / max * 100);
+      return `<div class="hbar-item">
+        <div class="hbar-meta"><span>${k}</span><strong>${fmt(v)}</strong></div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${p}%;background:${colors[i % colors.length]}">&nbsp;</div></div>
+      </div>`;
+    }).join('');
+}
+
+// ---- ADD ----
+let currentAmount = '0'; let selectedCat = null; let selectedMethod = null;
+
+function resetAdd() {
+  currentAmount = '0'; selectedCat = null; selectedMethod = null;
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-amount').classList.add('active');
+  document.getElementById('btn-save').disabled = true;
+  updateAmountDisplay();
+  renderKeypad();
+}
+
+function renderKeypad() {
+  const keys = ['1','2','3','4','5','6','7','8','9','000','0','⌫'];
+  document.getElementById('keypad').innerHTML = keys.map(k =>
+    `<button class="key" onclick="pressKey('${k}')">${k}</button>`
+  ).join('');
+}
+
+function pressKey(k) {
+  if (k === '⌫') { currentAmount = currentAmount.length > 1 ? currentAmount.slice(0, -1) : '0'; }
+  else if (k === '000') { if (currentAmount !== '0') currentAmount += '000'; }
+  else { if (currentAmount === '0') currentAmount = k; else currentAmount += k; }
+  if (parseInt(currentAmount) > 99999999) currentAmount = currentAmount.slice(0, -1);
+  updateAmountDisplay();
+}
+
+function updateAmountDisplay() {
+  const el = document.getElementById('amount-display');
+  el.textContent = '$' + parseInt(currentAmount).toLocaleString('es-CL');
+  el.classList.toggle('has-value', currentAmount !== '0');
+}
+
+function nextStep(target) {
+  if (target === 'step-cat' && parseInt(currentAmount) === 0) { showToast('ingresa un monto'); return; }
+  if (target === 'step-method' && !selectedCat) { showToast('elige una categoría'); return; }
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(target).classList.add('active');
+  if (target === 'step-cat') {
+    document.getElementById('cat-amount-show').textContent = '$' + parseInt(currentAmount).toLocaleString('es-CL');
+    renderCatGrid();
+  }
+  if (target === 'step-method') {
+    document.getElementById('method-amount-show').textContent = '$' + parseInt(currentAmount).toLocaleString('es-CL');
+    document.getElementById('method-cat-show').textContent = selectedCat;
+    const cat = state.categories.find(c => c.name === selectedCat);
+    document.getElementById('bolsillo-info').textContent = '→ se descuenta del bolsillo ' + (cat ? cat.bolsillo : 'semanal');
+  }
+}
+
+function renderCatGrid() {
+  document.getElementById('cat-grid').innerHTML = state.categories.map(c =>
+    `<div class="cat-item${selectedCat === c.name ? ' sel' : ''}" onclick="selectCat('${c.name}',this)">${c.name}</div>`
+  ).join('');
+}
+
+function selectCat(name, el) {
+  selectedCat = name;
+  document.querySelectorAll('.cat-item').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function selectMethod(m, el) {
+  selectedMethod = m;
+  document.querySelectorAll('.method-item').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  const btn = document.getElementById('btn-save');
+  btn.disabled = false;
+}
+
+function saveExpense() {
+  if (!selectedMethod) return;
+  const cat = state.categories.find(c => c.name === selectedCat);
+  const bolsillo = cat ? cat.bolsillo : 'semanal';
+  const today = new Date().toISOString().split('T')[0];
+  state.expenses.push({ amount: parseInt(currentAmount), cat: selectedCat, method: selectedMethod, bolsillo, date: today, ts: Date.now() });
+  save();
+  showToast('gasto guardado ✓');
+  goTo('screen-main');
+}
+
+// ---- CONFIG ----
+function renderConfig() {
+  document.getElementById('cfg-semanal').value = state.semanal || '';
+  document.getElementById('cfg-mesada').value = state.mesada || '';
+
+  document.getElementById('cat-config-list').innerHTML = state.categories.map((c, i) =>
+    `<div class="cat-row">
+      <span class="cat-name">${c.name}</span>
+      <select onchange="changeBolsillo(${i},this.value)">
+        <option value="semanal"${c.bolsillo === 'semanal' ? ' selected' : ''}>semanal</option>
+        <option value="mesada"${c.bolsillo === 'mesada' ? ' selected' : ''}>mesada</option>
+      </select>
+      <button class="btn-del" onclick="deleteCat(${i})">✕</button>
+    </div>`
+  ).join('');
+
+  const hist = document.getElementById('history-list');
+  const recent = state.expenses.slice().reverse().slice(0, 30);
+  if (!recent.length) { hist.innerHTML = '<div class="empty" style="padding:20px 0">sin gastos aún</div>'; return; }
+  const badgeClass = { 'débito': 'badge-deb', 'crédito': 'badge-cred', 'efectivo': 'badge-efec' };
+  hist.innerHTML = recent.map((e, i) =>
+    `<div class="hist-row">
+      <div>
+        <div class="hist-main">${e.cat}<span class="method-badge ${badgeClass[e.method] || ''}">${e.method}</span></div>
+        <div class="hist-sub">${e.date} · ${e.bolsillo}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="hist-amount">${fmt(e.amount)}</span>
+        <button class="btn-del" onclick="deleteExpense(${state.expenses.length - 1 - i})">✕</button>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function changeBolsillo(i, v) { state.categories[i].bolsillo = v; save(); }
+function deleteCat(i) { state.categories.splice(i, 1); save(); renderConfig(); showToast('categoría eliminada'); }
+function deleteExpense(i) { state.expenses.splice(i, 1); save(); renderConfig(); showToast('gasto eliminado'); }
+
+function addCategory() {
+  const name = document.getElementById('new-cat-name').value.trim().toLowerCase();
+  const bolsillo = document.getElementById('new-cat-bolsillo').value;
+  if (!name) { showToast('escribe un nombre'); return; }
+  if (state.categories.find(c => c.name === name)) { showToast('ya existe esa categoría'); return; }
+  state.categories.push({ name, bolsillo });
+  document.getElementById('new-cat-name').value = '';
+  save(); renderConfig(); showToast('categoría añadida ✓');
+}
+
+function saveConfig() {
+  state.semanal = parseInt(document.getElementById('cfg-semanal').value) || 0;
+  state.mesada = parseInt(document.getElementById('cfg-mesada').value) || 0;
+  save(); showToast('guardado ✓');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(() => t.style.opacity = '0', 2000);
+}
+
+checkResets();
+renderMain();
+</script>
+</body>
+</html>
