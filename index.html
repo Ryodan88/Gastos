@@ -277,6 +277,53 @@ input.cat-input{width:auto;flex:1;text-align:left;font-family:var(--font)}
 
 /* scroll fade observer */
 @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+.week-strip{
+  display:flex;
+  gap:10px;
+  padding:0 20px 12px;
+}
+
+.week-day{
+  flex:1;
+  background:#111;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:10px 0;
+  text-align:center;
+  font-size:11px;
+  color:var(--text3);
+  font-family:var(--font-mono);
+}
+
+.week-day.active{
+  background:var(--accent);
+  color:white;
+  border-color:var(--accent);
+}
+
+.light .week-day{
+  background:#f2f2f2;
+}
+
+.light .week-day.active{
+  background:var(--accent);
+  color:white;
+}
+
+.chart-block{
+  position:relative;
+  height:240px;
+}
+
+.donut-card{
+  background:#111111;
+}
+
+.light .donut-card{
+  background:#ffffff;
+}
+
 </style>
 </head>
 <body>
@@ -301,7 +348,11 @@ input.cat-input{width:auto;flex:1;text-align:left;font-family:var(--font)}
       </div>
     </div>
 
-    <div class="month-label" id="main-month"></div>
+    
+<div class="month-label" id="main-month"></div>
+
+<div class="week-strip" id="week-strip"></div>
+
 
     <div class="donuts-row">
       <!-- Semanal donut -->
@@ -341,17 +392,27 @@ input.cat-input{width:auto;flex:1;text-align:left;font-family:var(--font)}
       </div>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" onclick="setView('semana',this)">por semana</button>
-      <button class="tab" onclick="setView('metodo',this)">por método</button>
-      <button class="tab" onclick="setView('categoria',this)">por categoría</button>
-    </div>
+    
+<div class="charts-area" id="charts-area">
 
-    <div class="charts-area" id="charts-area">
-      <div class="chart-card" id="chart-card-main">
-        <div class="chart-title" id="chart-card-title">gastos por semana</div>
-        <div id="view-container"></div>
-      </div>
+  <div class="chart-card" id="chart-week">
+    <div class="chart-title">gastos por semana</div>
+    <div id="view-week"></div>
+  </div>
+
+  <div class="chart-card" id="chart-category">
+    <div class="chart-title">gastos por categoría</div>
+    <div id="view-category"></div>
+  </div>
+
+  <div class="chart-card" id="chart-method">
+    <div class="chart-title">gastos por método</div>
+    <div id="view-method"></div>
+  </div>
+
+</div>
+</div>
+
     </div>
   </div>
 
@@ -632,13 +693,28 @@ let currentView='semana';
 
 function renderMain(){
   checkResets();
+
   const now=new Date();
+
   const months=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
   document.getElementById('main-month').textContent=months[now.getMonth()]+' '+now.getFullYear();
 
-  const semSpent=getSpent('semanal'); const mesSpent=getSpent('mesada');
-  const semLeft=Math.max(0,state.semanal-semSpent); const mesLeft=Math.max(0,state.mesada-mesSpent);
-  const semPct=pct(semSpent,state.semanal); const mesPct=pct(mesSpent,state.mesada);
+  const weekDays=['lun','mar','mié','jue','vie','sáb','dom'];
+  const currentDay=(now.getDay()+6)%7;
+
+  document.getElementById('week-strip').innerHTML=weekDays.map((d,i)=>
+    `<div class="week-day ${i===currentDay?'active':''}">${d}</div>`
+  ).join('');
+
+  const semSpent=getSpent('semanal');
+  const mesSpent=getSpent('mesada');
+
+  const semLeft=Math.max(0,state.semanal-semSpent);
+  const mesLeft=Math.max(0,state.mesada-mesSpent);
+
+  const semPct=pct(semSpent,state.semanal);
+  const mesPct=pct(mesSpent,state.mesada);
 
   const semColor=semPct>90?'#EF4444':semPct>70?'#F59E0B':'#2563EB';
   const mesColor=mesPct>90?'#EF4444':mesPct>70?'#F59E0B':'#2563EB';
@@ -652,19 +728,28 @@ function renderMain(){
   document.getElementById('dbudget-sem').textContent='de '+fmt(state.semanal)+' presupuestado';
 
   const monStart=new Date(state.weekStart+'T12:00:00');
-  const monEnd=new Date(monStart); monEnd.setDate(monEnd.getDate()+6);
+  const monEnd=new Date(monStart);
+  monEnd.setDate(monEnd.getDate()+6);
+
   const fd=d=>d.getDate()+'/'+(d.getMonth()+1);
+
   document.getElementById('ddates-sem').textContent=fd(monStart)+' – '+fd(monEnd);
+
   document.getElementById('dfavor-sem').innerHTML=state.semFavor>0?`<div class="favor-pill">↑ ${fmt(state.semFavor)} a favor</div>`:'';
 
   document.getElementById('dpct-mes').textContent=mesPct+'%';
   document.getElementById('drem-mes').textContent=fmt(mesLeft)+' left';
   document.getElementById('dspent-mes').textContent=fmt(mesSpent);
   document.getElementById('dbudget-mes').textContent='de '+fmt(state.mesada)+' presupuestado';
+
   document.getElementById('ddates-mes').textContent=months[now.getMonth()];
+
   document.getElementById('dfavor-mes').innerHTML=state.mesFavor>0?`<div class="favor-pill">↑ ${fmt(state.mesFavor)} a favor</div>`:'';
 
-  renderView();
+  renderSemView(document.getElementById('view-week'));
+  renderCatView(document.getElementById('view-category'));
+  renderMesView(document.getElementById('view-method'));
+
   initScrollObserver();
 }
 
@@ -690,7 +775,52 @@ function renderView(){
 }
 
 
-let activeChart = null;
+let chartRegistry = {};
+
+
+function makeBarChart(id, labels, data){
+
+  const el = document.getElementById(id);
+
+  if(chartRegistry[id]){
+    chartRegistry[id].destroy();
+  }
+
+  chartRegistry[id] = new Chart(el,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        data,
+        backgroundColor:'#2563EB',
+        borderRadius:12,
+        borderSkipped:false,
+        barThickness:18
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false}
+      },
+      scales:{
+        x:{
+          grid:{display:false},
+          ticks:{color:'#777'}
+        },
+        y:{
+          grid:{
+            color:'rgba(255,255,255,0.05)'
+          },
+          ticks:{
+            color:'#777'
+          }
+        }
+      }
+    }
+  });
+}
 
 function renderSemView(c){
 
@@ -717,7 +847,7 @@ function renderSemView(c){
     return;
   }
 
-  c.innerHTML='<canvas id="mainChart" height="240"></canvas>';
+  c.innerHTML='<div class="chart-block"><canvas id="chart-weekly"></canvas></div>';
 
   const labels = sorted.map(k=>{
     const d=new Date(k+'T12:00:00');
@@ -726,55 +856,11 @@ function renderSemView(c){
 
   const data = sorted.map(k=>weeks[k]);
 
-  if(activeChart) activeChart.destroy();
-
-  activeChart = new Chart(
-    document.getElementById('mainChart'),
-    {
-      type:'bar',
-      data:{
-        labels,
-        datasets:[{
-          data,
-          borderRadius:12,
-          borderSkipped:false,
-          barThickness:18,
-        }]
-      },
-      options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins:{
-          legend:{display:false},
-          tooltip:{
-            backgroundColor:'#111',
-            borderColor:'#2563EB',
-            borderWidth:1
-          }
-        },
-        scales:{
-          x:{
-            grid:{display:false},
-            ticks:{
-              color:'#777'
-            }
-          },
-          y:{
-            grid:{
-              color:'rgba(255,255,255,0.05)'
-            },
-            ticks:{
-              color:'#777',
-              callback:(v)=>'$'+v/1000+'k'
-            }
-          }
-        }
-      }
-    }
-  );
+  makeBarChart('chart-weekly', labels, data);
 }
 
 function renderMesView(c){
+
   const byMethod={'débito':0,'crédito':0,'efectivo':0};
 
   state.expenses.filter(e=>e.date>=state.monthStart).forEach(e=>{
@@ -788,34 +874,17 @@ function renderMesView(c){
     return;
   }
 
-  c.innerHTML='<canvas id="mainChart" height="240"></canvas>';
+  c.innerHTML='<div class="chart-block"><canvas id="chart-methods"></canvas></div>';
 
-  if(activeChart) activeChart.destroy();
-
-  activeChart = new Chart(document.getElementById('mainChart'),{
-    type:'bar',
-    data:{
-      labels:entries.map(e=>e[0]),
-      datasets:[{
-        data:entries.map(e=>e[1]),
-        borderRadius:12,
-        borderSkipped:false,
-        barThickness:18
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{grid:{display:false}},
-        y:{grid:{color:'rgba(255,255,255,0.05)'}}
-      }
-    }
-  });
+  makeBarChart(
+    'chart-methods',
+    entries.map(e=>e[0]),
+    entries.map(e=>e[1])
+  );
 }
 
 function renderCatView(c){
+
   const map={};
 
   state.expenses.filter(e=>e.date>=state.monthStart).forEach(e=>{
@@ -829,31 +898,18 @@ function renderCatView(c){
     return;
   }
 
-  c.innerHTML='<canvas id="mainChart" height="240"></canvas>';
+  c.innerHTML='<div class="chart-block"><canvas id="chart-categories"></canvas></div>';
 
-  if(activeChart) activeChart.destroy();
-
-  activeChart = new Chart(document.getElementById('mainChart'),{
-    type:'bar',
-    data:{
-      labels:entries.map(e=>e[0]),
-      datasets:[{
-        data:entries.map(e=>e[1]),
-        borderRadius:12,
-        borderSkipped:false,
-        barThickness:16
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{grid:{display:false}},
-        y:{grid:{color:'rgba(255,255,255,0.05)'}}
-      }
-    }
+  const labels = entries.map(e=>{
+    const emoji = state.showEmoji ? catEmoji(e[0]) + ' ' : '';
+    return emoji + e[0];
   });
+
+  makeBarChart(
+    'chart-categories',
+    labels,
+    entries.map(e=>e[1])
+  );
 }
 
 let observerInitialized = false;
